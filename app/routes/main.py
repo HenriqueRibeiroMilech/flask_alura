@@ -1,7 +1,7 @@
 # Define as rotas principais da API e suas respostas em JSON.
-from flask import Blueprint, jsonify, request
-from app.models.user import LoginPayload
-from pydantic import ValidationError
+from flask import Blueprint, jsonify, request  # request permite acessar os dados enviados na requisição.
+from app.models.user import LoginPayload  # Define os campos e tipos esperados no corpo do login.
+from pydantic import ValidationError  # Exceção gerada quando os dados não atendem ao modelo.
 
 main_bp = Blueprint('main_bp', __name__)  # Agrupa as rotas para registro na aplicação.
 
@@ -14,17 +14,21 @@ def index():
 # RF: O sistema deve permitir que um usuário se autentique para obter um token.
 @main_bp.route('/login', methods=['POST'])  # POST envia dados de um recurso para o servidor.
 def login():
+    # O try permite tratar falhas na leitura e na validação dos dados recebidos.
     try:
-        raw_data = request.get_json()
-        user_data = LoginPayload(**raw_data)
+        raw_data = request.get_json()  # Converte o corpo JSON em um objeto Python; esperamos um dicionário.
+        user_data = LoginPayload(**raw_data)  # ** distribui as chaves como argumentos; o Pydantic valida os campos.
     except ValidationError as e:
-        return jsonify({"error": e.errors()}), 400
+        return jsonify({"error": e.errors()}), 400  # Retorna os detalhes da validação e o status de requisição inválida.
     except Exception as e:
-        return jsonify({"error": "Erro durante a requisição do dado"}), 500
+        return jsonify({"error": "Erro durante a requisição do dado"}), 500  # Outras exceções recebem uma mensagem genérica.
 
+    # Simula a autenticação com credenciais fixas; ainda não consulta usuários nem gera tokens.
+    # Os campos são strings, por isso a senha também é comparada com um texto.
     if user_data.username == 'admin' and user_data.password == '123':
         return jsonify({"message":"Login bem-sucedido!"})
     else:
+        # Sem status explícito, esta resposta também retorna HTTP 200 por padrão.
         return jsonify({"message":"Credenciais invalidas!"})
 
 # RF: O sistema deve permitir a listagem de todos os produtos.
