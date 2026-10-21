@@ -1,5 +1,7 @@
 # Define as rotas principais da API e suas respostas em JSON.
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
+from app.models.user import LoginPayload
+from pydantic import ValidationError
 
 main_bp = Blueprint('main_bp', __name__)  # Agrupa as rotas para registro na aplicação.
 
@@ -11,8 +13,19 @@ def index():
 
 # RF: O sistema deve permitir que um usuário se autentique para obter um token.
 @main_bp.route('/login', methods=['POST'])  # POST envia dados de um recurso para o servidor.
-def login():  # Por enquanto, só retorna uma mensagem, sem autenticar usuários.
-    return jsonify({"message":"Realizar o login"})
+def login():
+    try:
+        raw_data = request.get_json()
+        user_data = LoginPayload(**raw_data)
+    except ValidationError as e:
+        return jsonify({"error": e.errors()}), 400
+    except Exception as e:
+        return jsonify({"error": "Erro durante a requisição do dado"}), 500
+
+    if user_data.username == 'admin' and user_data.password == '123':
+        return jsonify({"message":"Login bem-sucedido!"})
+    else:
+        return jsonify({"message":"Credenciais invalidas!"})
 
 # RF: O sistema deve permitir a listagem de todos os produtos.
 @main_bp.route('/products', methods=['GET'])  # GET consulta ou obtem informações de recursos.
