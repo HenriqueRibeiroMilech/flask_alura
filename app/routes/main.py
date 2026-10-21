@@ -7,15 +7,15 @@ main_bp = Blueprint('main_bp', __name__)  # Agrupa as rotas para registro na apl
 def index():
     return jsonify({"message":"Rota inical do app"})  # Converte o dicionário em resposta JSON.
 
-# RF = Requisitos Funcionais.
+# RF = Requisitos Funcionais: descrevem o que o sistema deve permitir fazer.
 
 # RF: O sistema deve permitir que um usuário se autentique para obter um token.
-@main_bp.route('/login', methods=['POST'])  # Aceita POST; acessar pelo navegador com GET retorna 405.
+@main_bp.route('/login', methods=['POST'])  # POST envia dados de um recurso para o servidor.
 def login():  # Por enquanto, só retorna uma mensagem, sem autenticar usuários.
     return jsonify({"message":"Realizar o login"})
 
 # RF: O sistema deve permitir a listagem de todos os produtos.
-@main_bp.route('/products', methods=['GET'])  # Rota de produtos.
+@main_bp.route('/products', methods=['GET'])  # GET consulta ou obtem informações de recursos.
 def get_products():
     return jsonify({"message":"Rota de listagem de produtos"})
 
@@ -25,17 +25,17 @@ def create_product():
     return jsonify({"message":"Rota de criação de produtos"})
 
 # RF: O sistema deve permitir a visualização de um unico produto existente.
-@main_bp.route('/product/<int:product_id>', methods=['GET'])
+@main_bp.route('/product/<int:product_id>', methods=['GET'])  # Captura o ID da URL como inteiro e o passa à função.
 def get_product_by_id(product_id):
-    return jsonify({"message":f"Rota de visualização detalhada do produto {product_id}"})
+    return jsonify({"message":f"Rota de visualização detalhada do produto {product_id}"})  # A f-string insere o ID na mensagem.
 
 # RF: O sistema deve permitir a atualização de um unico produto existente.
-@main_bp.route('/product/<int:product_id>', methods=['PUT'])
+@main_bp.route('/product/<int:product_id>', methods=['PUT'])  # PUT indica a atualização de um recurso.
 def update_product(product_id):
     return jsonify({"message":f"Rota de atualização do produto {product_id}"})
 
 # RF: O sistema deve permitir a deleção de um unico produto existente.
-@main_bp.route('/product/<int:product_id>', methods=['DELETE'])
+@main_bp.route('/product/<int:product_id>', methods=['DELETE'])  # DELETE indica a exclusão de um recurso.
 def delete_product(product_id):
     return jsonify({"message":f"Rota de deleção do produto {product_id}"})
 
