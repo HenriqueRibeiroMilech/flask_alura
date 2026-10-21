@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
-class Login(BaseModel):  # Define os dados de entrada do login; a autenticação será feita separadamente.
+# Modelo específico dos dados enviados no login, sem representar um usuário completo.
+class Login(BaseModel):
     username: str
     password: str

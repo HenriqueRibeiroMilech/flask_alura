@@ -1,8 +1,8 @@
 from pydantic import BaseModel
-from datetime import date  # Representa uma data, sem horário.
+from datetime import date
 
-class Sale(BaseModel):  # Define os campos esperados para uma venda.
-    sale_date: date  # O Pydantic também aceita e converte datas em texto no formato AAAA-MM-DD.
+class Sale(BaseModel):
+    sale_date: date  # Também podemos usar tipos como date para representar uma data sem horário.
     product_id: str
     quantity: int
     total_value: float
