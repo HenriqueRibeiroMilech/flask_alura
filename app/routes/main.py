@@ -8,10 +8,10 @@ from app.models.products import *  # Disponibiliza os modelos usados na validaç
 from app.decorators import token_required  # Exige um JWT válido antes de executar a rota protegida.
 from datetime import datetime, timedelta, timezone  # Calcula a expiração usando horário UTC.
 import jwt  # PyJWT assina e valida tokens; o conteúdo do token não é criptografado.
-import csv
+import csv  # Biblioteca padrão para ler os registros do arquivo CSV.
 import os
-import io
-from app.models.sale import Sale
+import io  # Permite tratar o texto recebido como um arquivo em memória.
+from app.models.sale import Sale  # Valida e converte os campos de cada venda.
 
 main_bp = Blueprint('main_bp', __name__)  # Agrupa as rotas para registro na aplicação.
 
@@ -133,8 +133,9 @@ def delete_product(token, product_id):
 
 # RF: O sistema deve permitir a importação de vendas através de um arquivo.
 @main_bp.route('/sales/upload', methods=['POST'])
-@token_required
+@token_required  # Restringe o upload a requisições com JWT válido.
 def upload_sales(token):
+    # O cliente deve enviar o arquivo via form-data, usando a chave file.
     if 'file' not in request.files:
         return jsonify({"error": "Nenhum arquivo foi enviado"}), 400
 
@@ -143,28 +144,33 @@ def upload_sales(token):
     if file.filename == '':
         return jsonify({"error": "Nenhum arquivo selecionado"}), 400
 
+    # Confere a extensão do nome, conforme a aula; isso não valida o conteúdo do arquivo.
     if file and file.filename.endswith('.csv'):
+        # Lê os bytes, decodifica em UTF-8 e cria um arquivo de texto em memória.
         csv_stream = io.StringIO(file.stream.read().decode('UTF-8'), newline=None)
-        csv_reader = csv.DictReader(csv_stream)
+        csv_reader = csv.DictReader(csv_stream)  # Usa o cabeçalho como chaves de cada linha.
 
-    sales_to_insert = []
-    errors = []
+        sales_to_insert = []  # Acumula as vendas que passaram pela validação.
+        errors = []  # Guarda os erros sem interromper o processamento das demais linhas.
 
-    for row_num, row in enumerate(csv_reader, 1):
-        try:
-            sale_data = Sale(**row)
-            sales_to_insert.append(sale_data.model_dump())
-        except ValidationError as e:
-            errors.append(f"Linha {row_num}: Dados inválidos - {e.errors()}")
-        except Exception as e:
-            errors.append(f"Linha {row_num}: Erro inesperado ao processar a linha - {str(e)}")
+        # Numera os registros a partir de 1; o cabeçalho já foi consumido pelo DictReader.
+        for row_num, row in enumerate(csv_reader, 1):
+            try:
+                sale_data = Sale(**row)  # Distribui as colunas nos campos do modelo para validação e conversão.
+                sales_to_insert.append(sale_data.model_dump())  # Prepara um dicionário para a inserção.
+            except ValidationError as e:
+                errors.append(f"Linha {row_num}: Dados inválidos - {e.errors()}")
+            except Exception as e:
+                errors.append(f"Linha {row_num}: Erro inesperado ao processar a linha - {str(e)}")
 
+        # Fora do for: insere o lote uma única vez, após validar todos os registros.
         if sales_to_insert:
             try:
                 db.sales.insert_many(sales_to_insert)
             except Exception as e:
                 return jsonify({"error": f"Erro ao inserir dados no banco: {str(e)}"}), 500
-        
+
+        # Retorna a quantidade de vendas válidas e os erros coletados, inclusive quando nenhuma é válida.
         return jsonify({
             "message": "Upload processado com sucesso.",
             "vendas_importadas": len(sales_to_insert),
