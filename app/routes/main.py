@@ -4,7 +4,7 @@ from app.models.user import LoginPayload  # Define os campos e tipos esperados n
 from pydantic import ValidationError  # Exceção gerada quando os dados não atendem ao modelo.
 from app import db  # Banco selecionado na factory; db.products acessa a coleção products.
 from bson import ObjectId  # Tipo BSON usado pelo MongoDB para o _id padrão dos documentos.
-from app.models.products import *
+from app.models.products import *  # Disponibiliza os nomes públicos do módulo, incluindo ProductDBModel.
 
 main_bp = Blueprint('main_bp', __name__)  # Agrupa as rotas para registro na aplicação.
 
@@ -38,6 +38,8 @@ def login():
 @main_bp.route('/products', methods=['GET'])  # GET consulta ou obtem informações de recursos.
 def get_products():
     products_cursor = db.products.find({})  # Filtro vazio busca todos os documentos, como find().
+    # A compreensão de lista percorre o cursor; **product passa os campos de cada documento ao modelo para validação.
+    # by_alias=True usa _id na saída; exclude_none=True omite apenas valores None, preservando zero e texto vazio.
     products_list = [ProductDBModel(**product).model_dump(by_alias=True, exclude_none=True) for product in products_cursor]
 
     return jsonify(products_list)
@@ -59,6 +61,7 @@ def get_product_by_id(product_id):
     product = db.products.find_one({'_id':oid})  # Retorna um documento ou None; falhas de consulta não entram no try acima.
 
     if product:
+        # Aplica a mesma validação e serialização da listagem, agora a um único documento.
         product_model = ProductDBModel(**product).model_dump(by_alias=True, exclude_none=True)
         return jsonify(product_model)
     else:
