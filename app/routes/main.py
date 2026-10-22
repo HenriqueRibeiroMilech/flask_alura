@@ -4,14 +4,11 @@ from app.models.user import LoginPayload  # Define os campos e tipos esperados n
 from pydantic import ValidationError  # Exceção gerada quando os dados não atendem ao modelo.
 from app import db  # Banco selecionado na factory; db.products acessa a coleção products.
 from bson import ObjectId  # Tipo BSON usado pelo MongoDB para o _id padrão dos documentos.
-<<<<<<< HEAD
-from app.models.products import *
-from app.decorators import token_required
-from datetime import datetime, timedelta, timezone
-import jwt
-=======
-from app.models.products import *  # Disponibiliza os nomes públicos do módulo, incluindo ProductDBModel.
->>>>>>> a73bb90a1dd9807fd9dfb261a6f6db992e95e506
+from app.models.products import *  # Disponibiliza os modelos usados na validação e nas respostas.
+from app.decorators import token_required  # Exige um JWT válido antes de executar a rota protegida.
+from datetime import datetime, timedelta, timezone  # Calcula a expiração usando horário UTC.
+import jwt  # PyJWT assina e valida tokens; o conteúdo do token não é criptografado.
+
 
 main_bp = Blueprint('main_bp', __name__)  # Agrupa as rotas para registro na aplicação.
 
@@ -33,9 +30,10 @@ def login():
     except Exception as e:
         return jsonify({"error": "Erro durante a requisição do dado"}), 500  # Outras exceções recebem uma mensagem genérica.
 
-    # Simula a autenticação com credenciais fixas; ainda não consulta usuários nem gera tokens.
+    # Valida credenciais fixas para emitir o token; ainda não consulta usuários no banco.
     # Os campos são strings, por isso a senha também é comparada com um texto.
     if user_data.username == 'admin' and user_data.password == '123':
+        # Assina a identificação do usuário e a expiração de 30 minutos com a chave da aplicação.
         token = jwt.encode(
             {
                 "user_id": user_data.username,
@@ -46,8 +44,7 @@ def login():
         )
 
         return jsonify({'access_token': token}), 200
-    # Sem status explícito, esta resposta também retorna HTTP 200 por padrão.
-    return jsonify({"message":"Credenciais invalidas!"})
+    return jsonify({"error":"Credenciais inválidas"}), 401
 
 # RF: O sistema deve permitir a listagem de todos os produtos.
 @main_bp.route('/products', methods=['GET'])  # GET consulta ou obtem informações de recursos.
@@ -60,17 +57,18 @@ def get_products():
     return jsonify(products_list)
 
 # RF: O sistema deve permitir a criação de um novo produto.
-@token_required
 @main_bp.route('/products', methods=['POST'])
-def create_product(token):
+@token_required  # Aplicado primeiro para que o Flask registre a função já protegida.
+def create_product(token):  # Recebe os dados decodificados do JWT, repassados pelo decorator.
     try:
-        product = Product(**request.get_json())
+        product = Product(**request.get_json())  # Valida os campos do corpo JSON antes da inserção.
     except ValidationError as e:
-        return jsonify({"error": e.errors()})
+        return jsonify({"error": e.errors()}), 400
 
-    result = db.products.insert_one(product.model_dump())
+    # Usa os nomes do MongoDB e omite None para permitir que o banco gere o _id.
+    result = db.products.insert_one(product.model_dump(by_alias=True, exclude_none=True))
     
-    return jsonify({"message":"Rota de criação de produtos",
+    return jsonify({"message":"Produto criado com sucesso",
                     "id": str(result.inserted_id)}), 201
 
 # RF: O sistema deve permitir a visualização de um unico produto existente.
