@@ -8,7 +8,10 @@ from app.models.products import *  # Disponibiliza os modelos usados na validaç
 from app.decorators import token_required  # Exige um JWT válido antes de executar a rota protegida.
 from datetime import datetime, timedelta, timezone  # Calcula a expiração usando horário UTC.
 import jwt  # PyJWT assina e valida tokens; o conteúdo do token não é criptografado.
-
+import csv
+import os
+import io
+from app.models.sale import Sale
 
 main_bp = Blueprint('main_bp', __name__)  # Agrupa as rotas para registro na aplicação.
 
@@ -123,5 +126,40 @@ def delete_product(token, product_id):
 
 # RF: O sistema deve permitir a importação de vendas através de um arquivo.
 @main_bp.route('/sales/upload', methods=['POST'])
-def upload_sales():
-    return jsonify({"message":"Rota de upload de arquivo de vendas"})
+@token_required
+def upload_sales(token):
+    if 'file' not in request.files:
+        return jsonify({"error": "Nenhum arquivo foi enviado"}), 400
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({"error": "Nenhum arquivo selecionado"}), 400
+
+    if file and file.filename.endswith('.csv'):
+        csv_stream = io.StringIO(file.stream.read().decode('UTF-8'), newline=None)
+        csv_reader = csv.DictReader(csv_stream)
+
+    sales_to_insert = []
+    errors = []
+
+    for row_num, row in enumerate(csv_reader, 1):
+        try:
+            sale_data = Sale(**row)
+            sales_to_insert.append(sale_data.model_dump())
+        except ValidationError as e:
+            errors.append(f"Linha {row_num}: Dados inválidos - {e.errors()}")
+        except Exception as e:
+            errors.append(f"Linha {row_num}: Erro inesperado ao processar a linha - {str(e)}")
+
+        if sales_to_insert:
+            try:
+                db.sales.insert_many(sales_to_insert)
+            except Exception as e:
+                return jsonify({"error": f"Erro ao inserir dados no banco: {str(e)}"}), 500
+        
+        return jsonify({
+            "message": "Upload processado com sucesso.",
+            "vendas_importadas": len(sales_to_insert),
+            "erros_encontrados": errors
+        }), 200
