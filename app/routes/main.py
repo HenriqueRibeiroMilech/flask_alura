@@ -91,34 +91,41 @@ def get_product_by_id(product_id):
         return jsonify({"error":f"Produto com o id: {product_id} - Não encontrado"})
 
 # RF: O sistema deve permitir a atualização de um unico produto existente.
-@main_bp.route('/product/<int:product_id>', methods=['PUT']) # PUT indica a atualização de um recurso.
-@token_required
-def update_product(token, product_id):
+@main_bp.route('/product/<string:product_id>', methods=['PUT'])  # Recebe o ID do MongoDB como texto, conforme a aula.
+@token_required  # Exige autenticação antes de executar a atualização.
+def update_product(token, product_id):  # O decorator repassa os dados do JWT como primeiro argumento.
     try:
-        oid = ObjectId(product_id)
-        update_data = UpdateProduct(**request.get_json())
+        oid = ObjectId(product_id)  # Converte o ID da URL para o tipo usado no banco.
+        update_data = UpdateProduct(**request.get_json())  # Valida somente os dados enviados para alteração.
         update_result = db.products.update_one(
             {"_id": oid},
+            # $set altera os campos indicados, preservando os demais campos do documento.
+            # exclude_unset=True omite campos não enviados; um None explícito continua incluído.
             {"$set": update_data.model_dump(exclude_unset=True)}
         )
+        # matched_count verifica se o produto existe, mesmo quando os valores enviados são iguais aos atuais.
         if update_result.matched_count == 0:
             return jsonify({"error": "Produto não encontrado"}), 404
-        updated_product = db.products.find_one({"_id": oid})
+        updated_product = db.products.find_one({"_id": oid})  # Consulta novamente para retornar o documento atualizado.
+        # Valida o documento e converte seu _id em texto antes de gerar a resposta JSON.
         return jsonify(ProductDBModel(**updated_product).model_dump(by_alias=True, exclude_none=True))
     except ValidationError as e:
+        # Mantém a resposta da aula, sem status explícito (HTTP 200); não captura erros de ObjectId.
         return jsonify({"error": e.errors()})
 
 # RF: O sistema deve permitir a deleção de um unico produto existente.
-@main_bp.route('/product/<int:product_id>', methods=['DELETE'])  # DELETE indica a exclusão de um recurso.
-@token_required
+@main_bp.route('/product/<string:product_id>', methods=['DELETE'])  # Recebe o ID como texto para convertê-lo em ObjectId.
+@token_required  # Somente requisições autenticadas podem excluir produtos.
 def delete_product(token, product_id):
     try:
         oid = ObjectId(product_id)
-        delete_product = db.products.delete_one({"_id": oid})
+        delete_product = db.products.delete_one({"_id": oid})  # Exclui um único documento com esse ID.
+        # O resultado informa quantos documentos foram excluídos; zero indica produto ausente.
         if delete_product.deleted_count == 0:
             return jsonify({"error": "Produto não foi encontrado"}), 404
-        return "", 204
+        return "", 204  # HTTP 204 indica sucesso sem corpo de resposta.
     except Exception:
+        # Como na aula, qualquer exceção neste bloco recebe a mesma mensagem e o status 400.
         return jsonify({"error": "id do produto inválido"}), 400
 
 # RF: O sistema deve permitir a importação de vendas através de um arquivo.

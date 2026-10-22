@@ -27,8 +27,9 @@ class ProductDBModel(Product):
             data["_id"] = str(data["_id"])
         return data  # Retorna um dicionário Python; a conversão para JSON será feita pelo Flask.
 
+# Modelo separado para alterações parciais: não inclui id, pois ele não será atualizado.
 class UpdateProduct(BaseModel):
-    name: Optional[str] = None
+    name: Optional[str] = None  # Todos os campos podem ser omitidos ou receber None.
     price: Optional[float] = None
     description: Optional[str] = None
     stock: Optional[int] = None
