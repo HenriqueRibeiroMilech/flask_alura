@@ -2,6 +2,8 @@
 from flask import Blueprint, jsonify, request  # request permite acessar os dados enviados na requisição.
 from app.models.user import LoginPayload  # Define os campos e tipos esperados no corpo do login.
 from pydantic import ValidationError  # Exceção gerada quando os dados não atendem ao modelo.
+from app import db
+from bson import ObjectId
 
 main_bp = Blueprint('main_bp', __name__)  # Agrupa as rotas para registro na aplicação.
 
@@ -34,7 +36,14 @@ def login():
 # RF: O sistema deve permitir a listagem de todos os produtos.
 @main_bp.route('/products', methods=['GET'])  # GET consulta ou obtem informações de recursos.
 def get_products():
-    return jsonify({"message":"Rota de listagem de produtos"})
+    products_cursor = db.products.find({})
+    products_list = []
+
+    for products in products_cursor:
+        products['_id'] = str(products['_id'])
+        products_list.append(products)
+
+    return jsonify(products_list)
 
 # RF: O sistema deve permitir a criação de um novo produto.
 @main_bp.route('/products', methods=['POST'])
@@ -42,9 +51,20 @@ def create_product():
     return jsonify({"message":"Rota de criação de produtos"})
 
 # RF: O sistema deve permitir a visualização de um unico produto existente.
-@main_bp.route('/product/<int:product_id>', methods=['GET'])  # Captura o ID da URL como inteiro e o passa à função.
+@main_bp.route('/product/<string:product_id>', methods=['GET'])  # Captura o ID da URL como inteiro e o passa à função.
 def get_product_by_id(product_id):
-    return jsonify({"message":f"Rota de visualização detalhada do produto {product_id}"})  # A f-string insere o ID na mensagem.
+    try:
+        oid = ObjectId(product_id)
+    except Exception as e:
+        return jsonify({"error":f"Erro ao transformar o {product_id} em ObjectId: {e}"})
+
+    product = db.products.find_one({'_id':oid})
+
+    if product:
+        product['_id'] = str(product['_id'])
+        return jsonify(product)
+    else:
+        return jsonify({"error":f"Produto com o id: {product_id} - Não encontrado"})
 
 # RF: O sistema deve permitir a atualização de um unico produto existente.
 @main_bp.route('/product/<int:product_id>', methods=['PUT'])  # PUT indica a atualização de um recurso.
