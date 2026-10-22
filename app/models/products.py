@@ -26,3 +26,9 @@ class ProductDBModel(Product):
             # As rotas garantem isso com by_alias=True e sem excluir o campo id.
             data["_id"] = str(data["_id"])
         return data  # Retorna um dicionário Python; a conversão para JSON será feita pelo Flask.
+
+class UpdateProduct(BaseModel):
+    name: Optional[str] = None
+    price: Optional[float] = None
+    description: Optional[str] = None
+    stock: Optional[int] = None
