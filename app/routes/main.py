@@ -4,6 +4,7 @@ from app.models.user import LoginPayload  # Define os campos e tipos esperados n
 from pydantic import ValidationError  # Exceção gerada quando os dados não atendem ao modelo.
 from app import db  # Banco selecionado na factory; db.products acessa a coleção products.
 from bson import ObjectId  # Tipo BSON usado pelo MongoDB para o _id padrão dos documentos.
+from app.models.products import *
 
 main_bp = Blueprint('main_bp', __name__)  # Agrupa as rotas para registro na aplicação.
 
@@ -37,12 +38,7 @@ def login():
 @main_bp.route('/products', methods=['GET'])  # GET consulta ou obtem informações de recursos.
 def get_products():
     products_cursor = db.products.find({})  # Filtro vazio busca todos os documentos, como find().
-    products_list = []  # Acumula os documentos percorridos no cursor para retornar uma lista JSON.
-
-    for products in products_cursor:
-        # ObjectId não é serializado diretamente pelo jsonify; convertemos o valor apenas na resposta.
-        products['_id'] = str(products['_id'])
-        products_list.append(products)
+    products_list = [ProductDBModel(**product).model_dump(by_alias=True, exclude_none=True) for product in products_cursor]
 
     return jsonify(products_list)
 
@@ -63,8 +59,8 @@ def get_product_by_id(product_id):
     product = db.products.find_one({'_id':oid})  # Retorna um documento ou None; falhas de consulta não entram no try acima.
 
     if product:
-        product['_id'] = str(product['_id'])  # Prepara o ID do documento encontrado para a resposta JSON.
-        return jsonify(product)
+        product_model = ProductDBModel(**product).model_dump(by_alias=True, exclude_none=True)
+        return jsonify(product_model)
     else:
         # Mantém o comportamento da aula: produto ausente também retorna HTTP 200.
         return jsonify({"error":f"Produto com o id: {product_id} - Não encontrado"})
