@@ -65,8 +65,8 @@ def create_product(token):  # Recebe os dados decodificados do JWT, repassados p
     except ValidationError as e:
         return jsonify({"error": e.errors()}), 400
 
-    # Usa os nomes do MongoDB e omite None para permitir que o banco gere o _id.
-    result = db.products.insert_one(product.model_dump(by_alias=True, exclude_none=True))
+    # Converte o modelo validado em um dicionário para inserir o documento, conforme a aula.
+    result = db.products.insert_one(product.model_dump())
     
     return jsonify({"message":"Produto criado com sucesso",
                     "id": str(result.inserted_id)}), 201

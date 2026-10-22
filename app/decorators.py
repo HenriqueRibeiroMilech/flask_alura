@@ -11,10 +11,8 @@ def token_required(f):
         if 'Authorization' in request.headers:
             auth_header = request.headers['Authorization']
             try:
-                scheme, token = auth_header.split()
-                if scheme.lower() != 'bearer':
-                    return jsonify({'message': 'Token Malformado'}), 401
-            except ValueError:
+                token = auth_header.split(' ')[1]
+            except IndexError:
                 return jsonify({'message': 'Token Malformado'}), 401
         if not token:
             return jsonify({'error':'Token não encontrado'}), 401
